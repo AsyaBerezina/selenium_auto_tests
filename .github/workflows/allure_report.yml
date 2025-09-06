@@ -8,9 +8,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write    
+  pages: write       
+  id-token: write    
+  actions: read      
+  checks: write      
+  deployments: write 
 
 concurrency:
   group: "pages"
@@ -23,6 +26,9 @@ jobs:
     steps:
     - name: Получение кода из репозитория
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Настройка Python
       uses: actions/setup-python@v4
@@ -84,24 +90,30 @@ jobs:
         EOF
         fi
         
-        # Генерируем отчёт в папку allure-report (как в лекции)
+        # Генерируем отчёт в папку allure-report
         allure generate allure-results --clean -o allure-report
         
         # Проверяем что отчёт создался
         if [ -f "allure-report/index.html" ]; then
           echo "✅ Allure отчёт успешно сгенерирован в ./allure-report"
+          echo "Содержимое папки:"
           ls -la allure-report/
+          echo "Размер отчёта: $(du -sh allure-report/)"
         else
           echo "❌ Ошибка генерации отчёта"
           exit 1
         fi
     
     - name: Deploy Allure report to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       if: always()
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./allure-report
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Deploy Allure report'
         
     - name: Сохранение результатов тестов
       uses: actions/upload-artifact@v4
